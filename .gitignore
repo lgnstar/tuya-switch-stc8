@@ -50,3 +50,28 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+#source insight
+*.SearchResults
+Backup
+cache
+Source Insight 4.0 Shared
+
+#keil
+*.uvoptx
+*.Administrator
+*.LST
+*.OBJ
+*.lnp
+*.M51
+*.plg
+*.bak
+hsb7226
+hsb7226.hex
+List
+Obj
+DebugConfig
+Listings
+Objects
+output
+*.Administrator
