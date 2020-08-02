@@ -1,19 +1,18 @@
 #include "stc8.h"
+#include "intrins.h"
 
 #include "wifi.h"
 
-
-typedef struct
-{
-  unsigned char delay;
-}stKeyStatus;
+unsigned char btn_status_old;
+volatile unsigned char cnt_25ms_old = 0, cnt_25ms_cur = 0;
 
 void hardware_init(void);
 
 void usart1_SendStr(unsigned char *str);
 void usart1_SendHexStr(unsigned char *pdat, unsigned char len);
-
 void usart4_SendByte(unsigned char dat);
+
+void button_server(void);
 
 
 void main()
@@ -21,13 +20,14 @@ void main()
   hardware_init();
   wifi_protocol_init();
 
-  usart1_SendStr("begin ................................\r\n");
+  cnt_25ms_old = cnt_25ms_cur + 1;
+  btn_status_old = P00;
 
   while(1)
   {
     wifi_uart_service();
-    usart1_SendStr("OK!\r\n");
-    P23 = !P23;
+
+    button_server();
   }
 }
 
@@ -41,7 +41,7 @@ void hardware_init(void)
   T2L = 0xFE;       //设定定时初值
   T2H = 0xFF;       //设定定时初值
   AUXR |= 0x10;     //启动定时器2
-  IE |= 0x10;       //串行口1中断允许
+  //IE |= 0x10;       //串行口1中断允许
 
   //初始化串口4, 9600bps@11.0592MHz, 与wifi模块通信
   P_SW2 = 0x04;     //RXD4_2/P5.2, TXD4_2/P5.3
@@ -51,7 +51,7 @@ void hardware_init(void)
   T4L = 0xE8;       //设定定时初值
   T4H = 0xFF;       //设定定时初值
   T4T3M |= 0x80;    //启动定时器4
-  IE2 = 0x10;
+  IE2 |= 0x10;
 
   //定时计数器1, 25毫秒@11.0592MHz, 用于按键去抖动
   AUXR &= 0xBF;     //定时器时钟12T模式
@@ -114,9 +114,33 @@ void usart4_ISR(void) interrupt 18
 
 void timer1_ISR(void) interrupt 3
 {
-  //TL1 = 0x00;   TH1 = 0xA6;  TR1 = 1;
+  cnt_25ms_cur += 1;
+}
 
-  P21 = !P21;
+void button_server(void)
+{
+  if(cnt_25ms_cur != cnt_25ms_old)
+  {
+    if(P00 == 1)
+    {
+      btn_status_old = 1;
+      P25 = !P25;
+    }
+    else
+    {
+      if(btn_status_old == 1)
+      {
+        btn_status_old = 2;
+      }
+      else if(btn_status_old == 2)
+      {
+        btn_status_old = 3;
+        P21 = !P21;
+      }
+    }
+    cnt_25ms_old = cnt_25ms_cur;
+    P27 = !P27;
+  }
 }
 
 
